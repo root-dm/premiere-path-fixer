@@ -2,6 +2,17 @@
 
 A small, browser-based tool for replacing media path prefixes in Adobe Premiere Pro `.prproj` files. It helps when a project is moved between computers, drives, or operating systems and Premiere shows clips as offline even though the media is present.
 
+## Project structure
+
+| File | Purpose |
+| --- | --- |
+| `index.html` | Page structure and controls |
+| `styles.css` | Responsive layout and visual styles |
+| `path-rewrite.js` | Path validation and XML prefix replacement |
+| `app.js` | File reading, preview, gzip output, and browser interactions |
+
+The project is plain HTML, CSS, and JavaScript. It has no build step or runtime dependencies.
+
 Premiere saves full paths to source files in the project. If a project refers to `/Volumes/MediaDrive/Footage/clip.mp4` but the same file now lives at `D:\Footage\clip.mp4`, replace `/Volumes/MediaDrive` with `D:\`. The tool updates matching path references, preserves the rest of the project XML, and downloads a new `.prproj` file. It also works from Windows to macOS and between drives on the same system.
 
 ## Use
