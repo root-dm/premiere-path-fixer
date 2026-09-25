@@ -30,3 +30,7 @@ The file is processed locally in your browser; there is no server-side upload. T
 - The remaining folder structure and filenames must still match. This tool cannot restore missing files or correct renamed folders automatically.
 - One prefix replacement is applied at a time. For another unrelated prefix, run the downloaded copy through the tool again.
 - Keep the original project as a backup. Confirm the result by opening the downloaded copy in Premiere Pro.
+
+## Deploy on Dokploy
+
+Create an **Application** in Dokploy and select the `root-dm/premiere-path-fixer` GitHub repository on the `main` branch. Set the build type to **Static** and the root directory to `/` (repository root). Dokploy serves these files with Nginx; no Dockerfile, Docker Compose file, build command, volume, or environment variables are needed. Add a domain with container port **80**, then deploy. You can enable automatic deployment for future pushes if desired.
