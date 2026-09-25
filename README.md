@@ -2,6 +2,8 @@
 
 A small, browser-based tool for replacing media path prefixes in Adobe Premiere Pro `.prproj` files. It helps when a project is moved between computers, drives, or operating systems and Premiere shows clips as offline even though the media is present.
 
+Demo: https://premiere-path-fixer.rootdm.gr/
+
 ## Project structure
 
 | File | Purpose |
