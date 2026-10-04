@@ -34,7 +34,7 @@
     source.placeholder = 'Old folder path';
     source.setAttribute('aria-label', 'Old folder path');
     source.spellcheck = false;
-    source.value = from;
+    source.value = normalizeSource(from);
     const target = document.createElement('input');
     target.className = 'path';
     target.placeholder = 'New folder path';
@@ -61,15 +61,21 @@
     showStatus('Mappings changed. Select “Preview changes” again.');
   }
 
+  function normalizeSource(value) {
+    const path = value.trim();
+    // A pasted network share sometimes loses its first backslash.
+    return /^\\(?!\\)[^\\/]+\\[^\\/]+/.test(path) ? '\\' + path : path;
+  }
+
   function getMappings() {
     const rows = [...mappingList.querySelectorAll('.mapping-row')];
     const mappings = [];
-    for (const row of rows) {
+    for (const [index, row] of rows.entries()) {
       const [source, target] = row.querySelectorAll('input');
       if (!source.value.trim() && !target.value.trim()) continue;
-      if (!isAbsolutePath(source.value.trim()) || !isAbsolutePath(target.value.trim())) {
-        throw new Error('Each mapping needs two full folder paths. Check the old and new columns.');
-      }
+      source.value = normalizeSource(source.value);
+      if (!isAbsolutePath(source.value)) throw new Error('Mapping ' + (index + 1) + ': enter a full old path (network shares start with \\\\).');
+      if (!isAbsolutePath(target.value.trim())) throw new Error('Mapping ' + (index + 1) + ': enter a full new path.');
       mappings.push({
         from: escapeXml(trimTrailingSeparators(source.value)),
         to: escapeXml(normalizeDestination(target.value)),
