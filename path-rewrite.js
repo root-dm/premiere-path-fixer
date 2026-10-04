@@ -54,13 +54,29 @@ window.PathRewrite = (() => {
   }
 
   function rewrite(xml, oldRoot, newRoot) {
+    const result = rewriteMany(xml, [{ from: oldRoot, to: newRoot }]);
+    return { changed: result.changed, count: result.count, example: result.example };
+  }
+
+  function rewriteMany(xml, mappings) {
     let count = 0;
     let example = null;
+    const counts = mappings.map(() => 0);
+    // More specific folders take precedence over their parent folders.
+    const order = mappings.map((_, index) => index)
+      .sort((a, b) => mappings[b].from.length - mappings[a].from.length);
 
     // Keep the rest of Premiere's XML and its object identifiers unchanged.
     const changed = xml.replace(/>([^<]*)<|="([^"]*)"/g, (_whole, text, attribute) => {
       const original = text === undefined ? attribute : text;
-      const result = replaceInValue(original, oldRoot, newRoot);
+      let result = { value: original, count: 0 };
+      for (const index of order) {
+        const candidate = replaceInValue(original, mappings[index].from, mappings[index].to);
+        if (!candidate.count) continue;
+        result = candidate;
+        counts[index] += candidate.count;
+        break; // Match against the original value; do not cascade replacements.
+      }
       count += result.count;
 
       if (!example && result.count) {
@@ -70,8 +86,8 @@ window.PathRewrite = (() => {
       return text === undefined ? '="' + result.value + '"' : '>' + result.value + '<';
     });
 
-    return { changed, count, example };
+    return { changed, count, counts, example };
   }
 
-  return { trimTrailingSeparators, isAbsolutePath, normalizeDestination, escapeXml, rewrite };
+  return { trimTrailingSeparators, isAbsolutePath, normalizeDestination, escapeXml, rewrite, rewriteMany };
 })();

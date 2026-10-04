@@ -2,12 +2,11 @@
 (() => {
   const byId = (id) => document.getElementById(id);
   const fileInput = byId('file');
-  const oldPathInput = byId('from');
-  const newPathInput = byId('to');
+  const mappingList = byId('mappings');
   const status = byId('status');
   const scanButton = byId('scan');
   const downloadButton = byId('download');
-  const { trimTrailingSeparators, isAbsolutePath, normalizeDestination, escapeXml, rewrite } = window.PathRewrite;
+  const { trimTrailingSeparators, isAbsolutePath, normalizeDestination, escapeXml, rewriteMany } = window.PathRewrite;
 
   let selectedFile = null;
   let preparedProject = null;
@@ -21,9 +20,67 @@
     preparedProject = null;
     downloadButton.disabled = true;
     byId('matches').textContent = '—';
-    byId('old-root').textContent = '—';
+    byId('rule-count').textContent = '—';
+    byId('mapping-results').replaceChildren();
     byId('format').textContent = '—';
     byId('preview').hidden = true;
+  }
+
+  function addMapping(from = '', to = '') {
+    const row = document.createElement('div');
+    row.className = 'mapping-row';
+    const source = document.createElement('input');
+    source.className = 'path';
+    source.placeholder = 'Old folder path';
+    source.setAttribute('aria-label', 'Old folder path');
+    source.spellcheck = false;
+    source.value = from;
+    const target = document.createElement('input');
+    target.className = 'path';
+    target.placeholder = 'New folder path';
+    target.setAttribute('aria-label', 'New folder path');
+    target.spellcheck = false;
+    target.value = to;
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'secondary remove';
+    remove.textContent = '×';
+    remove.setAttribute('aria-label', 'Remove mapping');
+    remove.addEventListener('click', () => {
+      row.remove();
+      if (!mappingList.children.length) addMapping();
+      invalidatePreview();
+    });
+    for (const input of [source, target]) input.addEventListener('input', invalidatePreview);
+    row.append(source, target, remove);
+    mappingList.append(row);
+  }
+
+  function invalidatePreview() {
+    clearPreview();
+    showStatus('Mappings changed. Select “Preview changes” again.');
+  }
+
+  function getMappings() {
+    const rows = [...mappingList.querySelectorAll('.mapping-row')];
+    const mappings = [];
+    for (const row of rows) {
+      const [source, target] = row.querySelectorAll('input');
+      if (!source.value.trim() && !target.value.trim()) continue;
+      if (!isAbsolutePath(source.value.trim()) || !isAbsolutePath(target.value.trim())) {
+        throw new Error('Each mapping needs two full folder paths. Check the old and new columns.');
+      }
+      mappings.push({
+        from: escapeXml(trimTrailingSeparators(source.value)),
+        to: escapeXml(normalizeDestination(target.value)),
+        label: source.value.trim()
+      });
+    }
+    if (!mappings.length) throw new Error('Add at least one path mapping.');
+    if (new Set(mappings.map((rule) => rule.from.toLowerCase())).size !== mappings.length) {
+      throw new Error('The same old folder appears more than once. Remove the duplicate.');
+    }
+    return mappings;
   }
 
   async function readProject(file) {
@@ -61,26 +118,30 @@
       return showStatus('This project exceeds the 100 MB file limit.', 'error');
     }
 
-    const oldRoot = trimTrailingSeparators(oldPathInput.value);
-    const newRoot = normalizeDestination(newPathInput.value);
-    if (!isAbsolutePath(oldPathInput.value.trim()) ||
-        !isAbsolutePath(newPathInput.value.trim()) || !oldRoot || !newRoot) {
-      return showStatus(
-        'Enter two full paths, such as /Volumes/MediaDrive and D:\\, or C:\\Footage and /Volumes/MediaDrive.',
-        'error'
-      );
-    }
+    let mappings;
+    try { mappings = getMappings(); }
+    catch (error) { return showStatus(error.message, 'error'); }
 
     showStatus('Reading the project…');
     scanButton.disabled = true;
 
     try {
       const project = await readProject(selectedFile);
-      const result = rewrite(project.xml, escapeXml(oldRoot), escapeXml(newRoot));
+      const result = rewriteMany(project.xml, mappings);
 
       byId('matches').textContent = result.count.toLocaleString('en-US');
-      byId('old-root').textContent = oldRoot;
+      byId('rule-count').textContent = mappings.length.toLocaleString('en-US');
       byId('format').textContent = project.gzip ? 'Gzip XML' : 'XML';
+      mappings.forEach((rule, index) => {
+        const line = document.createElement('div');
+        line.className = 'mapping-result';
+        const label = document.createElement('span');
+        label.textContent = rule.label;
+        const total = document.createElement('strong');
+        total.textContent = result.counts[index].toLocaleString('en-US');
+        line.append(label, total);
+        byId('mapping-results').append(line);
+      });
 
       if (result.example) {
         byId('preview').hidden = false;
@@ -89,13 +150,15 @@
       }
 
       if (!result.count) {
-        showStatus('No paths match that prefix. Check the saved path shown in Premiere’s Link Media dialog.', 'error');
+        showStatus('No paths match these prefixes. Check the saved paths shown in Premiere’s Link Media dialog.', 'error');
         return;
       }
 
       preparedProject = { xml: result.changed, gzip: project.gzip, name: selectedFile.name };
       downloadButton.disabled = false;
-      showStatus('Ready: ' + result.count.toLocaleString('en-US') + ' path references will be updated.', 'ok');
+      const missed = result.counts.filter((number) => !number).length;
+      showStatus('Ready: ' + result.count.toLocaleString('en-US') + ' path references will be updated.' +
+        (missed ? ' ' + missed + ' mapping(s) have zero matches; check their spelling.' : ''), 'ok');
     } catch (error) {
       showStatus(error.message || 'Could not read the project.', 'error');
     } finally {
@@ -139,12 +202,23 @@
     showStatus(selectedFile ? 'Ready to preview.' : 'Choose a project to get started.');
   });
 
-  for (const input of [oldPathInput, newPathInput]) {
-    input.addEventListener('input', () => {
-      clearPreview();
-      showStatus('Paths changed. Select “Preview changes” again.');
-    });
-  }
+  byId('add-mapping').addEventListener('click', () => addMapping());
+  byId('import-mappings').addEventListener('click', () => {
+    const lines = byId('bulk-input').value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const parsed = [];
+    for (const line of lines) {
+      const match = line.match(/^(.+?)\s*(?:=>|→|\t)\s*(.+)$/);
+      if (!match) return showStatus('Use one “old path => new path” mapping per line.', 'error');
+      parsed.push([match[1].trim(), match[2].trim()]);
+    }
+    if (!parsed.length) return showStatus('Paste at least one mapping first.', 'error');
+    const first = mappingList.querySelector('.mapping-row');
+    if (mappingList.children.length === 1 && [...first.querySelectorAll('input')].every((input) => !input.value.trim())) first.remove();
+    parsed.forEach(([from, to]) => addMapping(from, to));
+    byId('bulk-input').value = '';
+    invalidatePreview();
+  });
+  addMapping();
 
   const dropZone = byId('drop');
   for (const event of ['dragenter', 'dragover']) {

@@ -23,26 +23,29 @@
           <span><strong id="file-label">Choose or drop a .prproj file</strong><small>Your project stays on your device</small></span>
         </label>
         <input id="file" type="file" accept=".prproj" aria-label="Premiere project .prproj">
-        <div class="step"><span>1</span> Path currently saved in the project</div>
-        <label class="field" for="from">Find this path prefix</label>
-        <input class="path" id="from" type="text" spellcheck="false" placeholder="/Volumes/MediaDrive" autocomplete="off">
-        <div class="step"><span>2</span> Where those files live now</div>
-        <label class="field" for="to">Replace it with</label>
-        <input class="path" id="to" type="text" spellcheck="false" placeholder="D:\" autocomplete="off">
-        <p class="example">For example: <code>/Volumes/MediaDrive/Footage/clip.mp4</code> → <code>D:\Footage\clip.mp4</code><br>Also works from Windows to macOS, or between two drives on the same system.</p>
+        <div class="step"><span>1</span> Path mappings</div>
+        <p class="example">Map each old folder to its new location. The rest of the path, including the filename, stays the same.</p>
+        <div id="mappings" class="mappings"></div>
+        <button class="secondary compact" type="button" id="add-mapping">+ Add mapping</button>
+        <details class="bulk"><summary>Paste multiple mappings</summary>
+          <p class="example">One per line: <code>old path =&gt; new path</code>. This adds the mappings above.</p>
+          <textarea id="bulk-input" class="path" rows="5" spellcheck="false" placeholder="X:\Footage => C:\Projects\Footage&#10;/Volumes/Media => D:\Media"></textarea>
+          <button class="secondary compact" type="button" id="import-mappings">Add pasted mappings</button>
+        </details>
         <div class="actions"><button class="secondary" type="button" id="scan">Preview changes</button><button class="primary" type="button" id="download" disabled>Download fixed .prproj</button></div>
         <div class="status" role="status" id="status" aria-live="polite">Choose a project to get started.</div>
       </section>
       <aside class="card" aria-label="Preview results">
         <h2>Change preview</h2><p class="aside-note">Check what will change before downloading.</p>
         <div class="summary"><span>Path references</span><strong id="matches">—</strong></div>
-        <div class="summary"><span>Original prefix</span><strong id="old-root">—</strong></div>
+        <div class="summary"><span>Mapping results</span><strong id="rule-count">—</strong></div>
+        <div id="mapping-results" class="mapping-results"></div>
         <div class="summary"><span>Project format</span><strong id="format">—</strong></div>
         <div class="preview" id="preview" hidden><h3>Example replacement</h3><pre id="before"></pre><pre id="after"></pre></div>
         <p class="hint">Only the matching prefix changes. The remaining folders and file names must match the files on disk. This tool cannot restore missing or renamed files.</p>
       </aside>
     </div>
-    <footer>The output is a new <code>.prproj</code> file. Keep the original project as a backup and open the fixed copy in Premiere. If your project uses several unrelated path prefixes, run the tool again on the downloaded copy for each one.</footer>
+    <footer>The output is a new <code>.prproj</code> file. Keep the original project as a backup and open the fixed copy in Premiere. File and folder names after each mapped prefix must match the actual files.</footer>
   </main>
 </div>
 </body>

@@ -21,8 +21,8 @@ Premiere saves full paths to source files in the project. If a project refers to
 
 1. Open `index.html` in a current browser, or host it as a static page.
 2. Choose a copy of your `.prproj` file.
-3. Enter the path prefix currently saved in the project and the new prefix where the same files live.
-4. Preview the number of matching references and an example change.
+3. Add one or more old/new folder mappings, or paste several lines using `old path => new path`.
+4. Preview the number of matching references per mapping and an example change.
 5. Download the fixed `.prproj` and open it in Premiere Pro.
 
 The file is processed locally in your browser; there is no server-side upload. The tool reads gzip-compressed Premiere XML, changes matching path prefixes, then writes a gzip-compressed `.prproj` copy. Uncompressed XML projects are also accepted. The input file limit is 100 MB.
@@ -30,7 +30,7 @@ The file is processed locally in your browser; there is no server-side upload. T
 ## Limitations
 
 - The remaining folder structure and filenames must still match. This tool cannot restore missing files or correct renamed folders automatically.
-- One prefix replacement is applied at a time. For another unrelated prefix, run the downloaded copy through the tool again.
+- Multiple path prefixes can be replaced in one pass. More specific prefixes take precedence. A mapping with zero matches is shown in the preview.
 - Keep the original project as a backup. Confirm the result by opening the downloaded copy in Premiere Pro.
 
 ## Deploy on Dokploy
